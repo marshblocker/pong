@@ -72,7 +72,7 @@ fn update_game_state_listener_system(
     mut game_end_event_reader: EventReader<GameEndEvent>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
-    if let Some(_) = game_end_event_reader.iter().next() {
+    if game_end_event_reader.iter().next().is_some() {
         next_state.set(GameState::End);
     }
 }

@@ -83,12 +83,12 @@ fn move_ball_system(time: Res<Time>, mut ball_query: Query<(&mut Transform, &Bal
 
 fn handle_ball_collision_system(
     mut ball_query: Query<(&mut Transform, &mut Ball)>,
-    paddles_query: Query<&Transform, (Or<(With<LeftPaddle>, With<RightPaddle>)>, Without<Ball>)>,
+    paddles_query: Query<&Transform, (PaddleType, Without<Ball>)>,
 ) {
     let (mut ball_transform, mut ball) = ball_query.single_mut();
     let ball_top = ball_transform.translation.y + BALL_SIZE_HALF;
     let ball_bottom = ball_transform.translation.y - BALL_SIZE_HALF;
-    let mut ball_angle = if ball.direction.x < 0. {
+    let ball_angle = if ball.direction.x < 0. {
         if ball.direction.y < 0. {
             -180.0 - ball.direction.y.asin().to_degrees()
         } else {
@@ -100,23 +100,29 @@ fn handle_ball_collision_system(
 
     // Check if ball collides on upper wall
     if ball_top > WINDOW_HEIGHT_HALF {
-        ball_transform.translation.y = WINDOW_HEIGHT_HALF - BALL_SIZE_HALF;
-        ball_angle = -ball_angle;
-        ball.direction = Vec3::new(
-            ball_angle.to_radians().cos(),
-            ball_angle.to_radians().sin(),
-            0.,
+        let mut new_ball_translation = ball_transform.translation;
+        let new_ball_angle = -ball_angle;
+        new_ball_translation.y = WINDOW_HEIGHT_HALF - BALL_SIZE_HALF;
+
+        _update_ball_due_to_collision(
+            &mut ball_transform,
+            &mut ball,
+            new_ball_translation,
+            new_ball_angle,
         );
     }
 
     // Check if ball collides on lower wall
     if ball_bottom < -WINDOW_HEIGHT_HALF {
-        ball_transform.translation.y = -WINDOW_HEIGHT_HALF + BALL_SIZE_HALF;
-        ball_angle = -ball_angle;
-        ball.direction = Vec3::new(
-            ball_angle.to_radians().cos(),
-            ball_angle.to_radians().sin(),
-            0.,
+        let mut new_ball_translation = ball_transform.translation;
+        let new_ball_angle = -ball_angle;
+        new_ball_translation.y = -WINDOW_HEIGHT_HALF + BALL_SIZE_HALF;
+
+        _update_ball_due_to_collision(
+            &mut ball_transform,
+            &mut ball,
+            new_ball_translation,
+            new_ball_angle,
         );
     }
 
@@ -129,62 +135,43 @@ fn handle_ball_collision_system(
 
         if let Some(collision) = collide_aabb::collide(ball_pos, ball_size, paddle_pos, paddle_size)
         {
+            let mut new_ball_translation = ball_transform.translation;
+            let new_ball_angle;
+
             match collision {
                 Collision::Top => {
-                    ball_transform.translation.y =
-                        paddle_pos.y + PADDLE_HEIGHT_HALF + BALL_SIZE_HALF;
-                    ball_angle = -ball_angle;
-                    ball.direction = Vec3::new(
-                        ball_angle.to_radians().cos(),
-                        ball_angle.to_radians().sin(),
-                        0.,
-                    );
+                    new_ball_translation.y = paddle_pos.y + PADDLE_HEIGHT_HALF + BALL_SIZE_HALF;
+                    new_ball_angle = -ball_angle;
                 }
                 Collision::Bottom => {
-                    ball_transform.translation.y =
-                        paddle_pos.y - PADDLE_HEIGHT_HALF - BALL_SIZE_HALF;
-                    ball_angle = -ball_angle;
-                    ball.direction = Vec3::new(
-                        ball_angle.to_radians().cos(),
-                        ball_angle.to_radians().sin(),
-                        0.,
-                    );
+                    new_ball_translation.y = paddle_pos.y - PADDLE_HEIGHT_HALF - BALL_SIZE_HALF;
+                    new_ball_angle = -ball_angle;
                 }
                 Collision::Left => {
-                    ball_transform.translation.x =
-                        paddle_pos.x - PADDLE_WIDTH_HALF - BALL_SIZE_HALF;
-                    ball_angle = 180.0 - ball_angle;
-                    ball.direction = Vec3::new(
-                        ball_angle.to_radians().cos(),
-                        ball_angle.to_radians().sin(),
-                        0.,
-                    );
+                    new_ball_translation.x = paddle_pos.x - PADDLE_WIDTH_HALF - BALL_SIZE_HALF;
+                    new_ball_angle = 180.0 - ball_angle;
                 }
                 Collision::Right => {
-                    ball_transform.translation.x =
-                        paddle_pos.x + PADDLE_WIDTH_HALF + BALL_SIZE_HALF;
-                    ball_angle = 180.0 - ball_angle;
-                    ball.direction = Vec3::new(
-                        ball_angle.to_radians().cos(),
-                        ball_angle.to_radians().sin(),
-                        0.,
-                    );
+                    new_ball_translation.x = paddle_pos.x + PADDLE_WIDTH_HALF + BALL_SIZE_HALF;
+                    new_ball_angle = 180.0 - ball_angle;
                 }
                 Collision::Inside => {
-                    ball_transform.translation.x = if ball_transform.translation.x < 0. {
+                    new_ball_translation.x = if ball_transform.translation.x < 0. {
                         paddle_pos.x + PADDLE_WIDTH_HALF + BALL_SIZE_HALF
                     } else {
                         paddle_pos.x - PADDLE_WIDTH_HALF - BALL_SIZE_HALF
                     };
-                    ball_transform.translation.y = 0.;
-                    ball_angle = 180.0;
-                    ball.direction = Vec3::new(
-                        ball_angle.to_radians().cos(),
-                        ball_angle.to_radians().sin(),
-                        0.,
-                    );
+                    new_ball_translation.y = 0.;
+                    new_ball_angle = 180.0;
                 }
             }
+
+            _update_ball_due_to_collision(
+                &mut ball_transform,
+                &mut ball,
+                new_ball_translation,
+                new_ball_angle,
+            );
         }
     }
 }
@@ -208,5 +195,21 @@ fn handle_ball_score_system(
         goal_event_writer.send(GoalEvent { left_scored: true });
         ball_transform.translation = Vec3::new(0., 0., 0.);
         ball.set_dir_to_random();
+    }
+}
+
+fn _update_ball_due_to_collision(
+    ball_transform: &mut Mut<Transform>,
+    ball: &mut Mut<Ball>,
+    new_ball_translation: Vec3,
+    new_ball_angle: f32,
+) {
+    {
+        ball_transform.translation = new_ball_translation;
+        ball.direction = Vec3::new(
+            new_ball_angle.to_radians().cos(),
+            new_ball_angle.to_radians().sin(),
+            0.,
+        );
     }
 }

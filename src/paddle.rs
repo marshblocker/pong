@@ -2,6 +2,8 @@ use bevy::prelude::*;
 
 use super::*;
 
+pub type PaddleType = Or<(With<LeftPaddle>, With<RightPaddle>)>;
+
 pub const PADDLE_WIDTH: f32 = 20.;
 pub const PADDLE_HEIGHT: f32 = 80.;
 pub const PADDLE_WIDTH_HALF: f32 = PADDLE_WIDTH / 2.;
@@ -81,9 +83,7 @@ fn move_paddle_system(
     }
 }
 
-fn handle_paddle_collision_system(
-    mut paddles_query: Query<&mut Transform, Or<(With<LeftPaddle>, With<RightPaddle>)>>,
-) {
+fn handle_paddle_collision_system(mut paddles_query: Query<&mut Transform, PaddleType>) {
     for mut paddle_transform in paddles_query.iter_mut() {
         let paddle_top = paddle_transform.translation.y + PADDLE_HEIGHT_HALF;
         let paddle_bottom = paddle_transform.translation.y - PADDLE_HEIGHT_HALF;
