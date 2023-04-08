@@ -307,8 +307,11 @@ fn handle_ball_collision_system(
                     );
                 }
                 Collision::Inside => {
-                    ball_transform.translation.x =
-                        paddle_pos.x - PADDLE_WIDTH_HALF - BALL_SIZE_HALF;
+                    ball_transform.translation.x = if ball_transform.translation.x < 0. {
+                        paddle_pos.x + PADDLE_WIDTH_HALF + BALL_SIZE_HALF
+                    } else {
+                        paddle_pos.x - PADDLE_WIDTH_HALF - BALL_SIZE_HALF
+                    };
                     ball_transform.translation.y = 0.;
                     ball_angle = 180.0;
                     ball.direction = Vec3::new(
