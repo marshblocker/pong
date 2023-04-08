@@ -26,13 +26,19 @@ impl Ball {
     fn set_dir_to_random(&mut self) {
         let mut rng = rand::thread_rng();
 
+        let random_angle = if random::<f32>() < 0.5 {
+            // Will point to the right paddle
+            rng.gen_range(-45.0..=45.0_f32)
+        } else {
+            // Will point to the left paddle
+            rng.gen_range(135.0..=225.0_f32)
+        };
+
         self.direction = Vec3::new(
-            rng.gen_range(-1000.0_f32..=1000.0_f32),
-            rng.gen_range(-1000.0_f32..=1000.0_f32),
+            random_angle.to_radians().cos(),
+            random_angle.to_radians().sin(),
             0.,
-        )
-        .try_normalize()
-        .unwrap_or_else(|| Vec3::new(45.0_f32.to_radians().cos(), 45.0_f32.to_radians().sin(), 0.));
+        );
     }
 }
 
