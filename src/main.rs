@@ -5,7 +5,7 @@
 //      2. Move paddles (DONE)
 //      3. Add collision detection to paddles on walls (DONE)
 //      4. Create ball and move it in a random direction when it spawns (DONE)
-//      5. Add collision detection to ball on walls
+//      5. Add collision detection to ball on upper and lower walls (DONE)
 //      6. Add collision detection to ball on paddles
 //      7. Restart position of ball when it goes past either of the paddles' goal field
 
@@ -41,11 +41,11 @@ const PADDLE_HEIGHT_HALF: f32 = PADDLE_HEIGHT / 2.;
 const PADDLE_SPEED: f32 = 300.;
 
 const BALL_SIZE: f32 = 30.;
+const BALL_SIZE_HALF: f32 = BALL_SIZE / 2.;
 const BALL_SPEED: f32 = 300.;
 
 struct SetupPlugin;
 struct PaddlePlugin;
-
 struct BallPlugin;
 
 impl Plugin for SetupPlugin {
@@ -65,7 +65,8 @@ impl Plugin for PaddlePlugin {
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(move_ball_system);
+        app.add_system(move_ball_system)
+            .add_system(handle_ball_collision_system);
     }
 }
 
@@ -145,7 +146,9 @@ fn spawn_ball_system(mut commands: Commands, asset_server: Res<AssetServer>) {
                 0.,
             )
             .try_normalize()
-            .unwrap_or_else(|| Vec3::new(1., 0., 0.)),
+            .unwrap_or_else(|| {
+                Vec3::new(45.0_f32.to_radians().cos(), 45.0_f32.to_radians().sin(), 0.)
+            }),
         },
     ));
 }
@@ -197,4 +200,43 @@ fn handle_paddle_collision_system(
 fn move_ball_system(time: Res<Time>, mut ball_query: Query<(&mut Transform, &Ball)>) {
     let (mut ball_transform, ball) = ball_query.single_mut();
     ball_transform.translation += BALL_SPEED * ball.direction * time.delta_seconds();
+}
+
+fn handle_ball_collision_system(mut ball_query: Query<(&mut Transform, &mut Ball)>) {
+    let (mut ball_transform, mut ball) = ball_query.single_mut();
+    let ball_top = ball_transform.translation.y + BALL_SIZE_HALF;
+    let ball_bottom = ball_transform.translation.y - BALL_SIZE_HALF;
+    let mut ball_angle = if ball.direction.x < 0. {
+        if ball.direction.y < 0. {
+            -180.0 - ball.direction.y.asin().to_degrees()
+        } else {
+            ball.direction.x.acos().to_degrees()
+        }
+    } else {
+        ball.direction.y.asin().to_degrees()
+    };
+
+    if ball_top > WINDOW_HEIGHT_HALF {
+        println!("old: {}, {}", ball_angle, ball.direction);
+        ball_transform.translation.y = WINDOW_HEIGHT_HALF - BALL_SIZE_HALF;
+        ball_angle = -ball_angle;
+        ball.direction = Vec3::new(
+            ball_angle.to_radians().cos(),
+            ball_angle.to_radians().sin(),
+            0.,
+        );
+        println!("new: {}, {}", ball_angle, ball.direction);
+    }
+
+    if ball_bottom < -WINDOW_HEIGHT_HALF {
+        println!("old: {}, {}", ball_angle, ball.direction);
+        ball_transform.translation.y = -WINDOW_HEIGHT_HALF + BALL_SIZE_HALF;
+        ball_angle = -ball_angle;
+        ball.direction = Vec3::new(
+            ball_angle.to_radians().cos(),
+            ball_angle.to_radians().sin(),
+            0.,
+        );
+        println!("new: {}, {}", ball_angle, ball.direction);
+    }
 }
