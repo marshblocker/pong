@@ -10,6 +10,7 @@ use super::*;
 pub const BALL_SIZE: f32 = 30.;
 pub const BALL_SIZE_HALF: f32 = BALL_SIZE / 2.;
 pub const BALL_SPEED: f32 = 300.;
+pub const BALL_FREEZE_DURATION_SECONDS: f32 = 2.0;
 
 #[derive(Component)]
 struct Ball {
@@ -42,17 +43,32 @@ impl Ball {
     }
 }
 
+/// This timer is used to temporarily freeze the ball at every start of a round.
+#[derive(Resource)]
+struct FreezeBallTimer(Timer);
+
+impl Default for FreezeBallTimer {
+    fn default() -> Self {
+        FreezeBallTimer(Timer::from_seconds(
+            BALL_FREEZE_DURATION_SECONDS,
+            TimerMode::Once,
+        ))
+    }
+}
+
 pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<GoalEvent>()
+        app.init_resource::<FreezeBallTimer>()
+            .add_event::<GoalEvent>()
             .add_startup_system(spawn_ball_system)
             .add_systems(
                 (
                     move_ball_system,
                     handle_ball_collision_system.after(move_ball_system),
                     handle_ball_score_system,
+                    tick_freeze_ball_timer_system,
                 )
                     .in_set(OnUpdate(GameState::Ongoing)),
             );
@@ -64,7 +80,11 @@ pub struct GoalEvent {
     pub left_scored: bool,
 }
 
-fn spawn_ball_system(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn spawn_ball_system(
+    mut commands: Commands,
+    asset_server: Res<AssetServer>,
+    mut freeze_ball_timer: ResMut<FreezeBallTimer>,
+) {
     // Spawn ball
     let mut ball = Ball::new();
     ball.set_dir_to_random();
@@ -80,11 +100,19 @@ fn spawn_ball_system(mut commands: Commands, asset_server: Res<AssetServer>) {
         },
         ball,
     ));
+
+    freeze_ball_timer.0.reset();
 }
 
-fn move_ball_system(time: Res<Time>, mut ball_query: Query<(&mut Transform, &Ball)>) {
-    let (mut ball_transform, ball) = ball_query.single_mut();
-    ball_transform.translation += BALL_SPEED * ball.direction * time.delta_seconds();
+fn move_ball_system(
+    mut ball_query: Query<(&mut Transform, &Ball)>,
+    time: Res<Time>,
+    freeze_ball_timer: Res<FreezeBallTimer>,
+) {
+    if freeze_ball_timer.0.paused() {
+        let (mut ball_transform, ball) = ball_query.single_mut();
+        ball_transform.translation += BALL_SPEED * ball.direction * time.delta_seconds();
+    }
 }
 
 fn handle_ball_collision_system(
@@ -185,22 +213,27 @@ fn handle_ball_collision_system(
 fn handle_ball_score_system(
     mut goal_event_writer: EventWriter<GoalEvent>,
     mut ball_query: Query<(&mut Transform, &mut Ball)>,
+    mut freeze_ball_timer: ResMut<FreezeBallTimer>,
 ) {
     let (mut ball_transform, mut ball) = ball_query.single_mut();
     let ball_left = ball_transform.translation.x - BALL_SIZE_HALF;
     let ball_right = ball_transform.translation.x + BALL_SIZE_HALF;
 
-    // Right player scores
-    if ball_right < -WINDOW_WIDTH_HALF {
-        goal_event_writer.send(GoalEvent { left_scored: false });
+    // Left or right player scored
+    if ball_right < -WINDOW_WIDTH_HALF || ball_left > WINDOW_WIDTH_HALF {
+        let left_scored = ball_left > WINDOW_WIDTH_HALF;
+
+        goal_event_writer.send(GoalEvent { left_scored });
         ball_transform.translation = Vec3::new(0., 0., 0.);
         ball.set_dir_to_random();
+        freeze_ball_timer.0.unpause();
     }
-    // Left player scores
-    else if ball_left > WINDOW_WIDTH_HALF {
-        goal_event_writer.send(GoalEvent { left_scored: true });
-        ball_transform.translation = Vec3::new(0., 0., 0.);
-        ball.set_dir_to_random();
+}
+
+fn tick_freeze_ball_timer_system(time: Res<Time>, mut freeze_ball_timer: ResMut<FreezeBallTimer>) {
+    if !freeze_ball_timer.0.paused() && freeze_ball_timer.0.tick(time.delta()).just_finished() {
+        freeze_ball_timer.0.pause();
+        freeze_ball_timer.0.reset();
     }
 }
 

@@ -10,6 +10,11 @@
 //      7. Restart position of ball when it goes past either of the paddles' goal field (DONE)
 //      8. Refactor code (DONE)
 //      9. Add scoring system (DONE)
+//      10. Temporarily freeze ball every start of a round (DONE)
+//      11. Allow game restart
+//      12. Add dynamics to gameplay -- e.g. implement acceleration
+//      12. Create game menu -- vs Human or vs AI
+//      13. Implement AI
 
 pub mod ball;
 pub mod paddle;
