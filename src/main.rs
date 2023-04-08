@@ -2,7 +2,7 @@
 //
 // Milestones:
 //      1. Create two paddles (DONE)
-//      2. Move paddles
+//      2. Move paddles (DONE)
 //      3. Add collision detection to paddles on walls
 //      4. Create ball and move it in a random direction when it spawns
 //      5. Add collision detection to ball on walls
@@ -23,6 +23,7 @@ fn main() {
             ..default()
         }))
         .add_plugin(SetupPlugin)
+        .add_system(move_paddles_system)
         .run();
 }
 
@@ -34,12 +35,14 @@ const WINDOW_HEIGHT_HALF: f32 = WINDOW_HEIGHT / 2.;
 
 const PADDLE_WIDTH: f32 = 20.;
 const PADDLE_HEIGHT: f32 = 80.;
+
+const PADDLE_SPEED: f32 = 300.;
 struct SetupPlugin;
 
 impl Plugin for SetupPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(spawn_preliminaries)
-            .add_startup_system(spawn_paddles);
+        app.add_startup_system(spawn_preliminaries_system)
+            .add_startup_system(spawn_paddles_system);
     }
 }
 
@@ -52,7 +55,7 @@ struct RightPaddle;
 #[derive(Component)]
 struct Ball;
 
-fn spawn_preliminaries(mut commands: Commands) {
+fn spawn_preliminaries_system(mut commands: Commands) {
     // Spawn camera;
     commands.spawn(Camera2dBundle::default());
 
@@ -67,7 +70,7 @@ fn spawn_preliminaries(mut commands: Commands) {
     });
 }
 
-fn spawn_paddles(mut commands: Commands) {
+fn spawn_paddles_system(mut commands: Commands) {
     // Spawn left paddle.
     commands.spawn((
         SpriteBundle {
@@ -95,4 +98,31 @@ fn spawn_paddles(mut commands: Commands) {
         },
         RightPaddle,
     ));
+}
+
+fn move_paddles_system(
+    time: Res<Time>,
+    keyboard_input: Res<Input<KeyCode>>,
+    mut left_paddle: Query<&mut Transform, (With<LeftPaddle>, Without<RightPaddle>)>,
+    mut right_paddle: Query<&mut Transform, With<RightPaddle>>
+) {
+    if keyboard_input.pressed(KeyCode::W) {
+        let mut left_paddle_transform = left_paddle.single_mut();
+        left_paddle_transform.translation.y += PADDLE_SPEED * time.delta_seconds();
+    }
+
+    if keyboard_input.pressed(KeyCode::S) {
+        let mut left_paddle_transform = left_paddle.single_mut();
+        left_paddle_transform.translation.y -= PADDLE_SPEED * time.delta_seconds();
+    }
+
+    if keyboard_input.pressed(KeyCode::Up) {
+        let mut right_paddle_transform = right_paddle.single_mut();
+        right_paddle_transform.translation.y += PADDLE_SPEED * time.delta_seconds();
+    }
+
+    if keyboard_input.pressed(KeyCode::Down) {
+        let mut right_paddle_transform = right_paddle.single_mut();
+        right_paddle_transform.translation.y -= PADDLE_SPEED * time.delta_seconds();
+    }
 }
