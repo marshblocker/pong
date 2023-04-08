@@ -9,15 +9,17 @@
 //      6. Add collision detection to ball on paddles (DONE)
 //      7. Restart position of ball when it goes past either of the paddles' goal field (DONE)
 //      8. Refactor code (DONE)
-//      9. Add scoring system
+//      9. Add scoring system (DONE)
 
 pub mod ball;
 pub mod paddle;
+pub mod score;
 
 use bevy::prelude::*;
 
-use paddle::PaddlePlugin;
 use ball::BallPlugin;
+use paddle::PaddlePlugin;
+use score::{GameEndEvent, ScorePlugin};
 
 fn main() {
     App::new()
@@ -30,9 +32,12 @@ fn main() {
             }),
             ..default()
         }))
+        .add_state::<GameState>()
         .add_startup_system(spawn_preliminaries_system)
+        .add_system(update_game_state_listener_system)
         .add_plugin(PaddlePlugin)
         .add_plugin(BallPlugin)
+        .add_plugin(ScorePlugin)
         .run();
 }
 
@@ -40,6 +45,13 @@ const WINDOW_WIDTH: f32 = 600.;
 const WINDOW_HEIGHT: f32 = 400.;
 const WINDOW_WIDTH_HALF: f32 = WINDOW_WIDTH / 2.;
 const WINDOW_HEIGHT_HALF: f32 = WINDOW_HEIGHT / 2.;
+
+#[derive(States, Debug, Clone, Eq, PartialEq, Hash, Default)]
+enum GameState {
+    #[default]
+    Ongoing,
+    End,
+}
 
 fn spawn_preliminaries_system(mut commands: Commands) {
     // Spawn camera;
@@ -54,4 +66,13 @@ fn spawn_preliminaries_system(mut commands: Commands) {
         },
         ..default()
     });
+}
+
+fn update_game_state_listener_system(
+    mut game_end_event_reader: EventReader<GameEndEvent>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    if let Some(_) = game_end_event_reader.iter().next() {
+        next_state.set(GameState::End);
+    }
 }

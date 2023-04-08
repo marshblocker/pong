@@ -1,11 +1,11 @@
 use bevy::{
     prelude::*,
-    sprite::collide_aabb::{self, *}
+    sprite::collide_aabb::{self, *},
 };
 use rand::prelude::*;
 
-use super::*;
 use super::paddle::*;
+use super::*;
 
 pub const BALL_SIZE: f32 = 30.;
 pub const BALL_SIZE_HALF: f32 = BALL_SIZE / 2.;
@@ -40,11 +40,22 @@ pub struct BallPlugin;
 
 impl Plugin for BallPlugin {
     fn build(&self, app: &mut App) {
-        app.add_startup_system(spawn_ball_system)
-            .add_system(move_ball_system)
-            .add_system(handle_ball_collision_system)
-            .add_system(handle_ball_score_system);
+        app.add_event::<GoalEvent>()
+            .add_startup_system(spawn_ball_system)
+            .add_systems(
+                (
+                    move_ball_system,
+                    handle_ball_collision_system.after(move_ball_system),
+                    handle_ball_score_system,
+                )
+                    .in_set(OnUpdate(GameState::Ongoing)),
+            );
     }
+}
+
+/// If left_scored is false, then right player scored.
+pub struct GoalEvent {
+    pub left_scored: bool,
 }
 
 fn spawn_ball_system(mut commands: Commands, asset_server: Res<AssetServer>) {
@@ -178,12 +189,23 @@ fn handle_ball_collision_system(
     }
 }
 
-fn handle_ball_score_system(mut ball_query: Query<(&mut Transform, &mut Ball)>) {
+fn handle_ball_score_system(
+    mut goal_event_writer: EventWriter<GoalEvent>,
+    mut ball_query: Query<(&mut Transform, &mut Ball)>,
+) {
     let (mut ball_transform, mut ball) = ball_query.single_mut();
     let ball_left = ball_transform.translation.x - BALL_SIZE_HALF;
     let ball_right = ball_transform.translation.x + BALL_SIZE_HALF;
 
-    if ball_right < -WINDOW_WIDTH_HALF || ball_left > WINDOW_WIDTH_HALF {
+    // Right player scores
+    if ball_right < -WINDOW_WIDTH_HALF {
+        goal_event_writer.send(GoalEvent { left_scored: false });
+        ball_transform.translation = Vec3::new(0., 0., 0.);
+        ball.set_dir_to_random();
+    }
+    // Left player scores
+    else if ball_left > WINDOW_WIDTH_HALF {
+        goal_event_writer.send(GoalEvent { left_scored: true });
         ball_transform.translation = Vec3::new(0., 0., 0.);
         ball.set_dir_to_random();
     }

@@ -20,7 +20,7 @@ impl Plugin for PaddlePlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_paddles_system)
             .add_system(move_paddle_system)
-            .add_system(handle_paddle_collision_system);
+            .add_system(handle_paddle_collision_system.after(move_paddle_system));
     }
 }
 
