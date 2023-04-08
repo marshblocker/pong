@@ -3,7 +3,7 @@
 // Milestones:
 //      1. Create two paddles (DONE)
 //      2. Move paddles (DONE)
-//      3. Add collision detection to paddles on walls
+//      3. Add collision detection to paddles on walls (DONE)
 //      4. Create ball and move it in a random direction when it spawns
 //      5. Add collision detection to ball on walls
 //      6. Add collision detection to ball on paddles
@@ -23,26 +23,37 @@ fn main() {
             ..default()
         }))
         .add_plugin(SetupPlugin)
-        .add_system(move_paddles_system)
+        .add_plugin(PaddlePlugin)
         .run();
 }
 
 const WINDOW_WIDTH: f32 = 600.;
 const WINDOW_HEIGHT: f32 = 400.;
-
 const WINDOW_WIDTH_HALF: f32 = WINDOW_WIDTH / 2.;
 const WINDOW_HEIGHT_HALF: f32 = WINDOW_HEIGHT / 2.;
 
+
 const PADDLE_WIDTH: f32 = 20.;
 const PADDLE_HEIGHT: f32 = 80.;
+const PADDLE_WIDTH_HALF: f32 = PADDLE_WIDTH / 2.;
+const PADDLE_HEIGHT_HALF: f32 = PADDLE_HEIGHT / 2.;
+
 
 const PADDLE_SPEED: f32 = 300.;
 struct SetupPlugin;
+struct PaddlePlugin;
 
 impl Plugin for SetupPlugin {
     fn build(&self, app: &mut App) {
         app.add_startup_system(spawn_preliminaries_system)
             .add_startup_system(spawn_paddles_system);
+    }
+}
+
+impl Plugin for PaddlePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_system(move_paddle_system)
+            .add_system(handle_paddle_collision_system);
     }
 }
 
@@ -100,7 +111,7 @@ fn spawn_paddles_system(mut commands: Commands) {
     ));
 }
 
-fn move_paddles_system(
+fn move_paddle_system(
     time: Res<Time>,
     keyboard_input: Res<Input<KeyCode>>,
     mut left_paddle: Query<&mut Transform, (With<LeftPaddle>, Without<RightPaddle>)>,
@@ -124,5 +135,22 @@ fn move_paddles_system(
     if keyboard_input.pressed(KeyCode::Down) {
         let mut right_paddle_transform = right_paddle.single_mut();
         right_paddle_transform.translation.y -= PADDLE_SPEED * time.delta_seconds();
+    }
+}
+
+fn handle_paddle_collision_system(
+    mut paddles_query: Query<&mut Transform, Or<(With<LeftPaddle>, With<RightPaddle>)>>
+) {
+    for mut paddle_transform in paddles_query.iter_mut() {
+        let paddle_top = paddle_transform.translation.y + PADDLE_HEIGHT_HALF;
+        let paddle_bottom = paddle_transform.translation.y - PADDLE_HEIGHT_HALF;
+        
+        if paddle_top > WINDOW_HEIGHT_HALF {
+            paddle_transform.translation.y = WINDOW_HEIGHT_HALF - PADDLE_HEIGHT_HALF;
+        }
+
+        if paddle_bottom < -WINDOW_HEIGHT_HALF {
+            paddle_transform.translation.y = -WINDOW_HEIGHT_HALF + PADDLE_HEIGHT_HALF;
+        }
     }
 }
