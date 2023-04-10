@@ -9,7 +9,7 @@ Classic game of [Pong](https://en.wikipedia.org/wiki/Pong). Created with [Bevy](
 
 ```bash
 # Clone the repository
-git clone
+git clone https://github.com/marshblocker/pong.git
 
 # Change directory
 cd pong
