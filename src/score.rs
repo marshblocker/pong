@@ -26,6 +26,8 @@ impl Plugin for ScorePlugin {
     }
 }
 
+// TODO: Remove this when possible
+#[allow(dead_code)]
 pub struct GameEndEvent {
     final_score: (i32, i32),
 }
