@@ -1,20 +1,7 @@
-// Pong
-//
-// Milestones:
-//      1. Create two paddles (DONE)
-//      2. Move paddles (DONE)
-//      3. Add collision detection to paddles on walls (DONE)
-//      4. Create ball and move it in a random direction when it spawns (DONE)
-//      5. Add collision detection to ball on upper and lower walls (DONE)
-//      6. Add collision detection to ball on paddles (DONE)
-//      7. Restart position of ball when it goes past either of the paddles' goal field (DONE)
-//      8. Refactor code (DONE)
-//      9. Add scoring system (DONE)
-//      10. Temporarily freeze ball every start of a round (DONE)
-//      11. Allow game restart
-//      12. Add dynamics to gameplay -- e.g. implement acceleration
-//      12. Create game menu -- vs Human or vs AI
-//      13. Implement AI
+// Copyright © 2023 Gabriel Kenneth L. Marinas <gabrielkennethmarinas@gmail.com>
+// This work is free. You can redistribute it and/or modify it under the
+// terms of the Do What The Fuck You Want To Public License, Version 2,
+// as published by Sam Hocevar. See the COPYING file for more details.
 
 pub mod ball;
 pub mod paddle;

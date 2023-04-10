@@ -1,3 +1,8 @@
+// Copyright © 2023 Gabriel Kenneth L. Marinas <gabrielkennethmarinas@gmail.com>
+// This work is free. You can redistribute it and/or modify it under the
+// terms of the Do What The Fuck You Want To Public License, Version 2,
+// as published by Sam Hocevar. See the COPYING file for more details.
+
 use bevy::{
     prelude::*,
     sprite::collide_aabb::{self, *},

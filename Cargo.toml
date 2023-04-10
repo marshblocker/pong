@@ -1,9 +1,13 @@
 [package]
 name = "pong"
+description = "Classic pong game made with Bevy."
 version = "0.1.0"
 edition = "2021"
+authors = ["Gabriel Kenneth L. Marinas <gabrielkennethmarinas@gmail.com>"]
+keywords = ["game", "classic", "arcade", "bevy"]
+repository = "https://github.com/marshblocker/pong"
+license = "WTFPL"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bevy = "0.10.1"
