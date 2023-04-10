@@ -68,6 +68,7 @@ impl Plugin for BallPlugin {
         app.init_resource::<FreezeBallTimer>()
             .add_event::<GoalEvent>()
             .add_startup_system(spawn_ball_system)
+            .add_system(reset_freeze_ball_timer.in_schedule(OnEnter(GameState::Ongoing)))
             .add_systems(
                 (
                     move_ball_system,
@@ -85,11 +86,7 @@ pub struct GoalEvent {
     pub left_scored: bool,
 }
 
-fn spawn_ball_system(
-    mut commands: Commands,
-    asset_server: Res<AssetServer>,
-    mut freeze_ball_timer: ResMut<FreezeBallTimer>,
-) {
+fn spawn_ball_system(mut commands: Commands, asset_server: Res<AssetServer>) {
     // Spawn ball
     let mut ball = Ball::new();
     ball.set_dir_to_random();
@@ -105,8 +102,6 @@ fn spawn_ball_system(
         },
         ball,
     ));
-
-    freeze_ball_timer.0.reset();
 }
 
 fn move_ball_system(
@@ -233,6 +228,10 @@ fn handle_ball_score_system(
         ball.set_dir_to_random();
         freeze_ball_timer.0.unpause();
     }
+}
+
+fn reset_freeze_ball_timer(mut freeze_ball_timer: ResMut<FreezeBallTimer>) {
+    freeze_ball_timer.0.reset();
 }
 
 fn tick_freeze_ball_timer_system(time: Res<Time>, mut freeze_ball_timer: ResMut<FreezeBallTimer>) {

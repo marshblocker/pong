@@ -24,9 +24,7 @@ fn main() {
             }),
             ..default()
         }))
-        .add_state::<GameState>()
-        .add_startup_system(spawn_preliminaries_system)
-        .add_system(update_game_state_listener_system)
+        .add_plugin(AppPlugin)
         .add_plugin(PaddlePlugin)
         .add_plugin(BallPlugin)
         .add_plugin(ScorePlugin)
@@ -43,6 +41,20 @@ enum GameState {
     #[default]
     Ongoing,
     End,
+}
+
+struct GameRestartEvent;
+
+struct AppPlugin;
+
+impl Plugin for AppPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<GameRestartEvent>()
+            .add_state::<GameState>()
+            .add_startup_system(spawn_preliminaries_system)
+            .add_system(update_game_state_listener_system)
+            .add_system(restart_game_system);
+    }
 }
 
 fn spawn_preliminaries_system(mut commands: Commands) {
@@ -62,9 +74,24 @@ fn spawn_preliminaries_system(mut commands: Commands) {
 
 fn update_game_state_listener_system(
     mut game_end_event_reader: EventReader<GameEndEvent>,
+    mut game_restart_event_reader: EventReader<GameRestartEvent>,
     mut next_state: ResMut<NextState<GameState>>,
 ) {
     if game_end_event_reader.iter().next().is_some() {
         next_state.set(GameState::End);
+    }
+
+    if game_restart_event_reader.iter().next().is_some() {
+        next_state.set(GameState::Ongoing);
+    }
+}
+
+fn restart_game_system(
+    mut game_restart_event_writer: EventWriter<GameRestartEvent>,
+    keyboard_input: Res<Input<KeyCode>>,
+    game_state: Res<State<GameState>>,
+) {
+    if game_state.0 == GameState::End && keyboard_input.just_pressed(KeyCode::R) {
+        game_restart_event_writer.send(GameRestartEvent);
     }
 }

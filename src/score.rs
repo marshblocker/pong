@@ -5,6 +5,8 @@
 
 use bevy::prelude::*;
 
+use crate::GameRestartEvent;
+
 use super::ball::GoalEvent;
 
 const SCORE_TO_WIN: i32 = 5;
@@ -34,8 +36,10 @@ pub struct GameEndEvent {
 
 fn update_score_listener_system(
     mut goal_event_reader: EventReader<GoalEvent>,
+    mut game_restart_event_reader: EventReader<GameRestartEvent>,
     mut score: ResMut<Score>,
 ) {
+    // If a player scores, increment that player's score by one.
     for goal_event in goal_event_reader.iter() {
         if goal_event.left_scored {
             score.left_score += 1;
@@ -45,23 +49,31 @@ fn update_score_listener_system(
 
         println!("Left: {}, Right: {}", score.left_score, score.right_score);
     }
+
+    // If the game is restarted, reset all scores to 0.
+    if game_restart_event_reader.iter().next().is_some() {
+        *score = Score::default();
+    }
 }
 
 fn check_for_winner_system(
     mut game_end_event_writer: EventWriter<GameEndEvent>,
     mut score: ResMut<Score>,
 ) {
-    if score.left_score == SCORE_TO_WIN {
+    if score.left_score == SCORE_TO_WIN || score.right_score == SCORE_TO_WIN {
         game_end_event_writer.send(GameEndEvent {
             final_score: (score.left_score, score.right_score),
         });
+
+        let winner = if score.left_score == SCORE_TO_WIN {
+            "Left"
+        } else {
+            "Right"
+        };
+
+        println!("{} player wins!", winner);
+        println!("Press 'R' to restart the game.");
+
         *score = Score::default();
-        println!("Left player wins!");
-    } else if score.right_score == SCORE_TO_WIN {
-        game_end_event_writer.send(GameEndEvent {
-            final_score: (score.left_score, score.right_score),
-        });
-        *score = Score::default();
-        println!("Right player wins!");
     }
 }
