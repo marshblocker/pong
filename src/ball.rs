@@ -117,50 +117,16 @@ fn move_ball_system(
 
 fn handle_ball_collision_system(
     mut ball_query: Query<(&mut Transform, &mut Ball)>,
-    paddles_query: Query<&Transform, (PaddleType, Without<Ball>)>,
+    paddles_query: Query<&Transform, (With<Paddle>, Without<Ball>)>,
 ) {
     let (mut ball_transform, mut ball) = ball_query.single_mut();
     let ball_top = ball_transform.translation.y + BALL_SIZE_HALF;
     let ball_bottom = ball_transform.translation.y - BALL_SIZE_HALF;
-    let ball_angle = if ball.direction.x < 0. {
-        if ball.direction.y < 0. {
-            -180.0 - ball.direction.y.asin().to_degrees()
-        } else {
-            ball.direction.x.acos().to_degrees()
-        }
-    } else {
-        ball.direction.y.asin().to_degrees()
-    };
 
-    // Check if ball collides on upper wall
-    if ball_top > WINDOW_HEIGHT_HALF {
-        let mut new_ball_translation = ball_transform.translation;
-        let new_ball_angle = -ball_angle;
-        new_ball_translation.y = WINDOW_HEIGHT_HALF - BALL_SIZE_HALF;
-
-        _update_ball_due_to_collision(
-            &mut ball_transform,
-            &mut ball,
-            new_ball_translation,
-            new_ball_angle,
-        );
+    if ball_top > WINDOW_HEIGHT_HALF || ball_bottom < -WINDOW_HEIGHT_HALF {
+        ball.direction[1] *= -1.;
     }
 
-    // Check if ball collides on lower wall
-    if ball_bottom < -WINDOW_HEIGHT_HALF {
-        let mut new_ball_translation = ball_transform.translation;
-        let new_ball_angle = -ball_angle;
-        new_ball_translation.y = -WINDOW_HEIGHT_HALF + BALL_SIZE_HALF;
-
-        _update_ball_due_to_collision(
-            &mut ball_transform,
-            &mut ball,
-            new_ball_translation,
-            new_ball_angle,
-        );
-    }
-
-    // Check ball collision on each paddle
     for paddle_transform in paddles_query.iter() {
         let ball_pos = ball_transform.translation;
         let ball_size = Vec2::new(BALL_SIZE, BALL_SIZE);
@@ -169,43 +135,22 @@ fn handle_ball_collision_system(
 
         if let Some(collision) = collide_aabb::collide(ball_pos, ball_size, paddle_pos, paddle_size)
         {
-            let mut new_ball_translation = ball_transform.translation;
-            let new_ball_angle;
-
             match collision {
-                Collision::Top => {
-                    new_ball_translation.y = paddle_pos.y + PADDLE_HEIGHT_HALF + BALL_SIZE_HALF;
-                    new_ball_angle = -ball_angle;
-                }
-                Collision::Bottom => {
-                    new_ball_translation.y = paddle_pos.y - PADDLE_HEIGHT_HALF - BALL_SIZE_HALF;
-                    new_ball_angle = -ball_angle;
-                }
-                Collision::Left => {
-                    new_ball_translation.x = paddle_pos.x - PADDLE_WIDTH_HALF - BALL_SIZE_HALF;
-                    new_ball_angle = 180.0 - ball_angle;
-                }
-                Collision::Right => {
-                    new_ball_translation.x = paddle_pos.x + PADDLE_WIDTH_HALF + BALL_SIZE_HALF;
-                    new_ball_angle = 180.0 - ball_angle;
-                }
+                Collision::Top | Collision::Bottom => ball.direction[1] *= -1.,
+                Collision::Left | Collision::Right => ball.direction[0] *= -1.,
                 Collision::Inside => {
-                    new_ball_translation.x = if ball_transform.translation.x < 0. {
+                    ball_transform.translation.x = if ball_transform.translation.x < 0. {
                         paddle_pos.x + PADDLE_WIDTH_HALF + BALL_SIZE_HALF
                     } else {
                         paddle_pos.x - PADDLE_WIDTH_HALF - BALL_SIZE_HALF
                     };
-                    new_ball_translation.y = 0.;
-                    new_ball_angle = 180.0;
+                    ball.direction = if ball_transform.translation.x < 0. {
+                        Vec3::new(1., 0., 0.)
+                    } else {
+                        Vec3::new(-1., 0., 0.)
+                    };
                 }
             }
-
-            _update_ball_due_to_collision(
-                &mut ball_transform,
-                &mut ball,
-                new_ball_translation,
-                new_ball_angle,
-            );
         }
     }
 }
